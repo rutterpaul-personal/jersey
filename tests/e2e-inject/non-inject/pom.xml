@@ -33,7 +33,7 @@
         <dependency>
             <groupId>org.glassfish.jersey.incubator</groupId>
             <artifactId>jersey-injectless-client</artifactId>
-            <version>2.46-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>

@@ -2197,6 +2197,7 @@
         <freemarker.version>2.3.33</freemarker.version>
         <gae.version>2.0.29</gae.version>
         <groovy.version>5.0.0-alpha-11</groovy.version>
+        <groovy.jdk8.version>4.0.24</groovy.jdk8.version>
         <gson.version>2.11.0</gson.version>
 
         <!--versions, extracted here due to maven-enforcer-plugin -->
@@ -2236,7 +2237,7 @@
         <jmh.version>1.37</jmh.version>
         <jmockit.version>1.49</jmockit.version>
         <junit4.version>4.13.2</junit4.version>
-        <junit5.version>5.11.0</junit5.version>
+        <junit5.version>5.11.4</junit5.version>
         <junit5.jdk8.version>5.10.3</junit5.jdk8.version>
         <junit-platform-suite.version>1.11.0</junit-platform-suite.version>
         <kryo.version>4.0.3</kryo.version>
