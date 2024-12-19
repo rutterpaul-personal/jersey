@@ -36,7 +36,6 @@
     </description>
 
     <properties>
-<!--        <groovy.version>3.0.21</groovy.version>-->
         <groovy-eclipse-compiler.version>3.7.0</groovy-eclipse-compiler.version>
         <groovy-eclipse-batch.version>3.0.8-01</groovy-eclipse-batch.version>
         <maven.version>3.9.2</maven.version>
@@ -304,6 +303,45 @@
                     </plugins>
                 </pluginManagement>
             </build>
+        </profile>
+        <profile>
+            <id>jdk_8</id>
+            <activation>
+                <jdk>1.8</jdk>
+            </activation>
+            <properties>
+                <groovy.version>${groovy.jdk8.version}</groovy.version>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.groovy</groupId>
+                    <artifactId>groovy-all</artifactId>
+                    <type>pom</type>
+                    <version>${groovy.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <artifactId>jackson-core</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <artifactId>jackson-databind</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.junit.jupiter</groupId>
+                            <artifactId>junit-jupiter-api</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.junit.jupiter</groupId>
+                            <artifactId>junit-jupiter-engine</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.junit.platform</groupId>
+                            <artifactId>junit-platform-commons</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 </project>
