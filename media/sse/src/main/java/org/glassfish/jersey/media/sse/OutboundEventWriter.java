@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -16,11 +16,15 @@
 
 package org.glassfish.jersey.media.sse;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.nio.charset.Charset;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
@@ -43,15 +47,14 @@ import org.glassfish.jersey.message.MessageUtils;
  */
 class OutboundEventWriter implements MessageBodyWriter<OutboundSseEvent> {
 
-    private static final Charset UTF8 = Charset.forName("UTF-8");
-
     // encoding does not matter (lower ASCII characters)
-    private static final byte[] COMMENT_LEAD = ": ".getBytes(UTF8);
-    private static final byte[] NAME_LEAD = "event: ".getBytes(UTF8);
-    private static final byte[] ID_LEAD = "id: ".getBytes(UTF8);
-    private static final byte[] RETRY_LEAD = "retry: ".getBytes(UTF8);
-    private static final byte[] DATA_LEAD = "data: ".getBytes(UTF8);
+    private static final byte[] COMMENT_LEAD = ": ".getBytes(UTF_8);
+    private static final byte[] NAME_LEAD = "event: ".getBytes(UTF_8);
+    private static final byte[] ID_LEAD = "id: ".getBytes(UTF_8);
+    private static final byte[] RETRY_LEAD = "retry: ".getBytes(UTF_8);
+    private static final byte[] DATA_LEAD = "data: ".getBytes(UTF_8);
     private static final byte[] EOL = {'\n'};
+    private static final Pattern EOL_PATTERN = Pattern.compile("\r\n|\r|\n");
 
     private final Provider<MessageBodyWorkers> workersProvider;
 
@@ -87,7 +90,7 @@ class OutboundEventWriter implements MessageBodyWriter<OutboundSseEvent> {
 
         final Charset charset = MessageUtils.getCharset(mediaType);
         if (outboundEvent.getComment() != null) {
-            for (final String comment : outboundEvent.getComment().split("\n")) {
+            for (final String comment : EOL_PATTERN.split(outboundEvent.getComment())) {
                 entityStream.write(COMMENT_LEAD);
                 entityStream.write(comment.getBytes(charset));
                 entityStream.write(EOL);
@@ -97,12 +100,12 @@ class OutboundEventWriter implements MessageBodyWriter<OutboundSseEvent> {
         if (outboundEvent.getType() != null) {
             if (outboundEvent.getName() != null) {
                 entityStream.write(NAME_LEAD);
-                entityStream.write(outboundEvent.getName().getBytes(charset));
+                entityStream.write(outboundEvent.getName().replace("\r", "").replace("\n", "").getBytes(charset));
                 entityStream.write(EOL);
             }
             if (outboundEvent.getId() != null) {
                 entityStream.write(ID_LEAD);
-                entityStream.write(outboundEvent.getId().getBytes(charset));
+                entityStream.write(outboundEvent.getId().replace("\r", "").replace("\n", "").getBytes(charset));
                 entityStream.write(EOL);
             }
             if (outboundEvent.getReconnectDelay() > SseFeature.RECONNECT_NOT_SET) {
@@ -115,6 +118,7 @@ class OutboundEventWriter implements MessageBodyWriter<OutboundSseEvent> {
                     outboundEvent.getMediaType() == null ? MediaType.TEXT_PLAIN_TYPE : outboundEvent.getMediaType();
             final MessageBodyWriter messageBodyWriter = workersProvider.get().getMessageBodyWriter(outboundEvent.getType(),
                     outboundEvent.getGenericType(), annotations, eventMediaType);
+            final var dataLeadStream = new DataLeadStream(entityStream);
             messageBodyWriter.writeTo(
                     outboundEvent.getData(),
                     outboundEvent.getType(),
@@ -122,23 +126,74 @@ class OutboundEventWriter implements MessageBodyWriter<OutboundSseEvent> {
                     annotations,
                     eventMediaType,
                     httpHeaders,
-                    new OutputStream() {
-
-                        private boolean start = true;
-
-                        @Override
-                        public void write(final int i) throws IOException {
-                            if (start) {
-                                entityStream.write(DATA_LEAD);
-                                start = false;
-                            }
-                            entityStream.write(i);
-                            if (i == '\n') {
-                                entityStream.write(DATA_LEAD);
-                            }
-                        }
-                    });
+                    dataLeadStream);
+            dataLeadStream.finish();
             entityStream.write(EOL);
+        }
+    }
+
+    static final class DataLeadStream extends OutputStream {
+        private final OutputStream entityStream;
+
+        private int lastChar = -1;
+
+        DataLeadStream(final OutputStream entityStream) {
+            this.entityStream = entityStream;
+        }
+
+        @Override
+        public void write(final int i) throws IOException {
+            if (lastChar == -1) {
+                entityStream.write(DATA_LEAD);
+            } else if (lastChar != '\n' && lastChar != '\r') {
+                entityStream.write(lastChar);
+            } else if (lastChar == '\n' || lastChar == '\r' && i != '\n') {
+                entityStream.write(EOL);
+                entityStream.write(DATA_LEAD);
+            }
+
+            lastChar = i;
+        }
+
+        private static int indexOfEol(final byte[] b, final int fromIndex, final int toIndex) {
+            for (var i = fromIndex; i < toIndex; i++) {
+                if (b[i] == '\n' || b[i] == '\r') {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        @Override
+        public void write(final byte[] b, final int off, final int len) throws IOException {
+            Objects.checkFromIndexSize(off, len, b.length);
+            if (len == 0) {
+                return;
+            }
+            write(b[off]);
+            if (len > 1) {
+                final var end = off + len - 1;
+                var i = off;
+                for (var j = indexOfEol(b, i, end); j != -1; j = indexOfEol(b, i, end)) {
+                    entityStream.write(b, i, j - i);
+                    entityStream.write(EOL);
+                    entityStream.write(DATA_LEAD);
+                    if (b[j] == '\r' && b[j + 1] == '\n') {
+                        j++;
+                    }
+                    i = ++j;
+                }
+                if (i < end) {
+                    entityStream.write(b, i, end - i);
+                }
+                lastChar = b[end];
+            }
+        }
+
+        void finish() throws IOException {
+            if (lastChar != -1) {
+                write(-1);
+            }
         }
     }
 }
