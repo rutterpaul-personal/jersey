@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -54,6 +54,19 @@ class FirstByteCachingStreamTest {
     }
 
     @Test
+    void testOneByteInArray() throws Exception {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(new byte[]{'A'});
+        InputStream testIs = createFirstByteCachingStream(byteArrayInputStream);
+        Assertions.assertEquals(1, testIs.available());
+
+        byte[] bytes = new byte[1];
+        int l = testIs.read(bytes);
+        Assertions.assertEquals(1, l);
+        Assertions.assertEquals('A', bytes[0]);
+        Assertions.assertEquals(0, testIs.available());
+    }
+
+    @Test
     void testTwoBytes() throws Exception {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(new byte[]{'A', 'B'});
         InputStream testIs = createFirstByteCachingStream(byteArrayInputStream);
@@ -73,7 +86,8 @@ class FirstByteCachingStreamTest {
         Assertions.assertEquals(2, testIs.available());
 
         byte[] bytes = new byte[2];
-        testIs.read(bytes);
+        int l = testIs.read(bytes);
+        Assertions.assertEquals(2, l);
         Assertions.assertEquals('A', bytes[0]);
         Assertions.assertEquals('B', bytes[1]);
         Assertions.assertEquals(0, testIs.available());
