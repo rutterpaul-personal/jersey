@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2024 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2025 Oracle and/or its affiliates. All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0, which is available at
@@ -295,7 +295,6 @@ public abstract class AbstractJaxbProvider<T> extends AbstractMessageReaderWrite
         } finally {
             jaxbContextsLock.unlock();
         }
-
     }
 
     /**
@@ -330,23 +329,25 @@ public abstract class AbstractJaxbProvider<T> extends AbstractMessageReaderWrite
      * @param annotations array of annotations that MAY contain a {@code XmlHeader} annotation instance.
      */
     protected void setHeader(Marshaller marshaller, Annotation[] annotations) {
-        for (Annotation a : annotations) {
-            if (a instanceof XmlHeader) {
-                try {
-                    // standalone jaxb ri
-                    marshaller.setProperty("org.glassfish.jaxb.xmlHeaders", ((XmlHeader) a).value());
-                } catch (PropertyException e) {
+        if (annotations != null) {
+            for (Annotation a : annotations) {
+                if (a instanceof XmlHeader) {
                     try {
-                        // older name
-                        marshaller.setProperty("com.sun.xml.bind.xmlHeaders", ((XmlHeader) a).value());
-                    } catch (PropertyException ex) {
-                        // other jaxb implementation
-                        Logger.getLogger(AbstractJaxbProvider.class.getName()).log(
-                                Level.WARNING, "@XmlHeader annotation is not supported with this JAXB implementation."
-                                        + " Please use JAXB RI if you need this feature.");
+                        // standalone jaxb ri
+                        marshaller.setProperty("org.glassfish.jaxb.xmlHeaders", ((XmlHeader) a).value());
+                    } catch (PropertyException e) {
+                        try {
+                            // older name
+                            marshaller.setProperty("com.sun.xml.bind.xmlHeaders", ((XmlHeader) a).value());
+                        } catch (PropertyException ex) {
+                            // other jaxb implementation
+                            Logger.getLogger(AbstractJaxbProvider.class.getName()).log(
+                                    Level.WARNING, "@XmlHeader annotation is not supported with this JAXB implementation."
+                                            + " Please use JAXB RI if you need this feature.");
+                        }
                     }
+                    break;
                 }
-                break;
             }
         }
     }
