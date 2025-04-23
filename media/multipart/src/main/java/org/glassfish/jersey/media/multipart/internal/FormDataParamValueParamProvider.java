@@ -354,7 +354,7 @@ final class FormDataParamValueParamProvider extends AbstractValueParamProvider {
         @Override
         public EntityPart apply(ContainerRequest request) {
             List<FormDataBodyPart> bodyParts = getEntity(request).getFields(name);
-            return bodyParts.size() != 0 ? bodyParts.get(0) : null;
+            return bodyParts != null && bodyParts.size() != 0 ? bodyParts.get(0) : null;
         }
     }
 
